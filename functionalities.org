@@ -1,0 +1,29 @@
+
+* API specs
+
+1. 5 possible commands
+   1. Post
+      Posts a `Vec<u8>` buffer to the server
+      | header (POST) | room_id | data            |
+      | 1 byte        | 60 bits | up to 2^16 bits |
+      Returns nothing.
+      
+   2. Get
+      Gets a range of posts, between from and to.
+      | header (GET) | room_id | from (timestamp) | to (timestamp) | Total    |
+      | 1 byte       | 8 bytes | 8 bytes          | 8 bytes        | 25 bytes |
+      Returns =len(posts)= responses of type:
+      | room_id | time    | data             | Total |
+      | 8 bytes | 8 bytes | data_length bits |  1040 |
+      the data payloads can be at most 1024 bytes, which needs 10 bits.
+      since it is a lot easier to work with bytes instead of bits, we round data_len up to 16 bits and use 2 bytes, while making sure that it is less than 1024.
+      
+   3. Watch
+      | header (WATCH) | room_id |
+      | 1 byte         | 8 bytes |
+   4. Unwatch
+      | header (UNWATCH) | room_id |
+      | 1 byte           | 8 bytes |
+   5. Time
+      | header (TIME) |
+      | 1 byte        |

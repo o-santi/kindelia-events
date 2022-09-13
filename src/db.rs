@@ -4,11 +4,6 @@ use tokio_tungstenite::tungstenite::Message;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-// pub struct Post {
-//     pub time: u64,
-//     pub data: Vec<u8>,
-// }
-
 pub type Peer = (SocketAddr, UnboundedSender<Message>);
 pub type Post = (Vec<u8>, u64);
 
@@ -37,17 +32,18 @@ impl Database {
 	return post;
     }
 
-    pub fn get_post(&mut self, room_id: u64, from_stmp: u64, to_stmp: u64) -> Result<Vec<Post>, String> {
+    pub fn get_post(&mut self, room_id: u64, from_id: u64, to_id: u64) -> Result<Vec<Post>, String> {
 	let room_u60 = room_id & U60_MASK;
 	match self.room_posts.get(&room_u60) {
 	    None => Err(format!("Room with id {:?} does not exist", room_id)),
 	    Some(room) => {
 		let mut ret = vec![];
-		for (data, tim) in room {
-		    if *tim > from_stmp && *tim <= to_stmp {
+		for (i, (data, tim)) in room.iter().enumerate() {
+		    if (i as u64) >= from_id && (i as u64) < to_id {
 			ret.push((data.clone(), tim.clone()));
 		    }
 		}
+		// for loops are easier than get mut clone iter stuff
 		return Ok(ret)
 	    }
 	}

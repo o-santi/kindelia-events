@@ -49,14 +49,14 @@ async fn handle_connection_websocket(stream: TcpStream, addr: SocketAddr, conn: 
 
 fn parse_get_request(data: &[u8]) -> (u64, u64, u64) {
     let room = u64::from_be_bytes(data[1..9].try_into().expect("error reading room_id"));
-    let from_timestamp = u64::from_be_bytes(data[9..17].try_into().expect("error reading from-timestamp"));
-    let to_timestamp = u64::from_be_bytes(data[17..25].try_into().expect("error reading to-timestamp"));
-    (room, from_timestamp, to_timestamp)
+    let from_id = u64::from_be_bytes(data[9..17].try_into().expect("error reading from-timestamp"));
+    let to_id = u64::from_be_bytes(data[17..25].try_into().expect("error reading to-timestamp"));
+    (room, from_id, to_id)
 }
 
 fn get_post(conn: &mut Database, data: &[u8], channel: UnboundedSender<Message>) {
-    let (room, from_timestamp, to_timestamp) = parse_get_request(data);
-    let posts = conn.get_post(room, from_timestamp, to_timestamp);
+    let (room, from_id, to_id) = parse_get_request(data);
+    let posts = conn.get_post(room, from_id, to_id);
     match posts {
 	Err(err) => send_to_channel(error_msg_data(err), channel),
 	Ok(psts) => 
@@ -69,8 +69,8 @@ fn get_post(conn: &mut Database, data: &[u8], channel: UnboundedSender<Message>)
 fn post_to_db(conn: &mut Database, data: &[u8], channel: UnboundedSender<Message>) {
     let room = u64::from_be_bytes(data[1..9].try_into().expect("error reading room_id"));
     let data : Vec<u8> = data[9..data.len()].try_into().expect("error reading post data");
-    if data.len() > (1024 + 9) {
-	send_to_channel(error_msg_data("Cannot post more than 1024 bytes per request".into()), channel);
+    if data.len() > (1200 + 9) {
+	send_to_channel(error_msg_data("Cannot post more than 1200 bytes per request".into()), channel);
     }
     else {
 	let post = conn.save_post(room, data.to_vec());
@@ -120,8 +120,8 @@ async fn on_udp_message(conn: Arc<Mutex<Database>>, data: Vec<u8>, socket: Arc<U
     if let Some(&head) = data.first() {
 	match head {
 	    GET => {
-		let (room, from_timestamp, to_timestamp) = parse_get_request(&data);
-		let posts = conn.lock().unwrap().get_post(room, from_timestamp, to_timestamp);
+		let (room, from_id, to_id) = parse_get_request(&data);
+		let posts = conn.lock().unwrap().get_post(room, from_id, to_id);
 		match posts {
 		    Err(err) => { socket.send_to(err.as_bytes(), addr).await.unwrap(); },
 		    Ok(psts) => 

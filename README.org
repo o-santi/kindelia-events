@@ -1,0 +1,63 @@
+* Kindelia Events
+
+This repo offers the rust implementation of Kindelia event's server. Mainly it opens up 2 ports, one for TCP Websocket connections and other to UDP connections.
+
+The first byte of the packet is interpreted as the header, and it has 5 possible types:
+
+| header byte  value | type of request |
+|                  0 | GET             |
+|                  1 | POST            |
+|                  2 | WATCH           |
+|                  3 | UNWATCH         |
+|                  4 | TIME            |
+|                  7 | ERROR           |
+
+** GET
+The structure of the get request is as follows:
+
+| header | room id | from post index | to post index |
+| 1 byte | 8 bytes | 8 bytes         | 8 bytes       |
+
+Note that even though =room id= has 8 bytes, only the first 60 bits are used (to make it compatible with hvm's native U60 type).
+
+It responds with =to post index= - =from post index= packets of the form.
+
+| POST   | room id | timestamp | message          |
+| 1 byte | 8 bytes | 8 bytes   | up to 1200 bytes |
+
+The header byte will always be POST (1), then the room id, the timestamp (UNIX epoch), then the actual message that was sent. 
+
+** POST
+The structure of the post request is as follows:
+| header | room id | message          |
+| 1 byte | 8 bytes | up to 1200 bytes |
+It responds with nothing.
+
+** WATCH
+The structure of the watch request is as follows:
+| header | room id |
+| 1 byte | 8 bytes |
+And responds with nothing.
+
+However, whenever someone sends a POST request to the same room, it will echo that POST to your connection. This can only be done with a Websocket connection.
+
+** UNWATCH
+The structure of the watch request is as follows:
+| header | room id |
+| 1 byte | 8 bytes |
+And responds with nothing.
+
+** TIME
+The structure of the time request is as follows:
+| header |
+| 1 byte |
+Yes, just send it the TIME byte and it will answer with:
+| TIME   | timestamp |
+| 1 byte | 8 bytes   |
+Where timestamp is a u64 of the UNIX epoch
+
+** ERROR
+Whenever the packet cannot be correctly interpreted, it will send back an ERROR packet of the following structure:
+| ERROR  | Error text message |
+| 1 byte | up to 1200 bytes   |
+Describing what went wrong. TODO: This should just change to Error codes of fixed size (u8 probably).
